@@ -3,6 +3,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 def load_data(file_path, label):
     # Load the Excel file, setting the second row (index 1) as the header
@@ -67,6 +69,68 @@ def main():
     most_influential_feature = quality_correlations.abs().idxmax()
     st.write(f"The attribute with the biggest influence on wine quality is: {most_influential_feature} "
              f"with a correlation of {quality_correlations[most_influential_feature]:.2f}")
+    # Identificer attributten med den laveste korrelation til kvalitet
+    least_influential_feature = quality_correlations.abs().idxmin()
+
+    # Fjern denne attribut fra det kombinerede datasæt
+    updated_data = combined_data.drop(columns=[least_influential_feature])
+
+    # Vis det opdaterede datasæt
+    st.write(f"The attribute with the lowest influence on wine quality is: {least_influential_feature}. It has been removed from the dataset.")
+    st.write("Updated Dataset after removing the least influential attribute:")
+    st.dataframe(updated_data)
+
+    # Map 'Type' column to numerical values: 'White' to 1 and 'Red' to 2
+    updated_data['Type'] = updated_data['Type'].map({'White': 1, 'Red': 2})
+
+    # Vis besked over tabellen
+    st.write("Categorical 'Type' column transformed to numeric: 'White' as 1 and 'Red' as 2")
+
+    # Vis det opdaterede datasæt
+    st.write("Updated Dataset with 'Type' as Numeric Values:")
+    st.dataframe(updated_data)
+
+    # Vælg kun numeriske kolonner (sikkerhedsforanstaltning)
+    numeric_data = updated_data.select_dtypes(include=[np.number])
+
+    # Standardiserer datasættet
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(numeric_data)
+
+    # Anvender PCA
+    pca = PCA()
+    pca.fit(scaled_data)
+
+    # Beregner den kumulative forklarede varians ratio
+    cumulative_variance_ratio = np.cumsum(pca.explained_variance_ratio_)
+
+    # Bestemmer det optimale antal komponenter (f.eks. for at forklare mindst 95% af variansen)
+    optimal_num_components = np.where(cumulative_variance_ratio >= 0.95)[0][0] + 1
+    
+    # Vis det optimale antal komponenter i Streamlit
+    st.markdown("### Principal Component Analysis (PCA)")
+    st.write(f"Optimal number of components to retain 95% of the variance: {optimal_num_components}")
+
+    # Valgfrit: Vis den kumulative forklarede varians ratio i Streamlit
+    cumulative_variance_ratio_output = ""
+    for i, ratio in enumerate(cumulative_variance_ratio):
+        cumulative_variance_ratio_output += f"Component {i+1}: Cumulative explained variance: {ratio:.2f}\n"
+    st.text(cumulative_variance_ratio_output)
+
+    # Vælg ti tilfældige rækker fra det endelige datasæt
+    random_rows = updated_data.sample(n=10)
+
+    # Vis disse rækker i Streamlit
+    st.write("Ten random rows from the final dataset:")
+    st.dataframe(random_rows)
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
